@@ -4,7 +4,6 @@ venv3/
 # Datasets and models
 Dataset/
 raw_data/
-Models/*.pkl
 *.pt
 *.zip
 
