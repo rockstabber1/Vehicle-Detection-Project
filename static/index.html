@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vehicle Detection System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 600px;
+            width: 90%;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+        }
+        
+        .upload-section {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .upload-section:hover {
+            border-color: #764ba2;
+            background: #f8f9ff;
+        }
+        
+        .upload-icon {
+            font-size: 4rem;
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+        
+        .upload-text {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .upload-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        
+        .upload-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .image-preview {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 10px;
+            margin: 20px 0;
+            display: none;
+        }
+        
+        .result-section {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            display: none;
+        }
+        
+        .result-positive {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+        }
+        
+        .result-negative {
+            background: linear-gradient(45deg, #f44336, #da190b);
+            color: white;
+        }
+        
+        .result-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+        
+        .result-text {
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .result-details {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 10px;
+            color: #721c24;
+            display: none;
+        }
+        
+        .api-info {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+        
+        .api-info h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .api-endpoint {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚗 Vehicle Detection AI</h1>
+        
+        <div class="upload-section" onclick="document.getElementById('fileInput').click()">
+            <div class="upload-icon">📷</div>
+            <div class="upload-text">Click to upload an image or drag and drop</div>
+            <button class="upload-btn">Choose Image</button>
+            <input type="file" id="fileInput" class="file-input" accept="image/*" onchange="handleFileSelect(event)">
+        </div>
+        
+        <img id="imagePreview" class="image-preview" alt="Preview">
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <div>Analyzing image for vehicles...</div>
+        </div>
+        
+        <div class="result-section" id="resultSection">
+            <div class="result-icon" id="resultIcon"></div>
+            <div class="result-text" id="resultText"></div>
+            <div class="result-details" id="resultDetails"></div>
+        </div>
+        
+        <div class="error-section" id="errorSection">
+            <strong>Error:</strong> <span id="errorMessage"></span>
+        </div>
+        
+        <div class="api-info">
+            <h3>🔗 API Integration</h3>
+            <div>FastAPI endpoint:</div>
+            <div class="api-endpoint">POST /detect-vehicle/</div>
+            <div style="margin-top: 10px;">
+                <strong>Response:</strong> <code>{"vehicle_detected": true/false, "confidence": 0.85}</code>
+            </div>
+        </div>
+    </div>
+
+   <script>
+    function handleFileSelect(event) {
+        const file = event.target.files[0];
+        console.log("File selected:", file);  // Debug: File info
+
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const preview = document.getElementById('imagePreview');
+                preview.src = e.target.result;
+                preview.style.display = 'block';
+                console.log("Image preview loaded");  // Debug: Image loaded
+
+                detectVehicleAPI(file);
+            };
+            reader.readAsDataURL(file);
+        } else {
+            console.warn("No file selected.");
+        }
+    }
+
+    async function detectVehicleAPI(file) {
+        const loading = document.getElementById('loading');
+        const resultSection = document.getElementById('resultSection');
+        const errorSection = document.getElementById('errorSection');
+        const resultIcon = document.getElementById('resultIcon');
+        const resultText = document.getElementById('resultText');
+        const resultDetails = document.getElementById('resultDetails');
+        const errorMessage = document.getElementById('errorMessage');
+
+        loading.style.display = 'block';
+        resultSection.style.display = 'none';
+        errorSection.style.display = 'none';
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            console.log("Sending request to API...");
+
+            const response = await fetch('http://localhost:8000/predict', {
+                method: 'POST',
+                body: formData
+            });
+
+            console.log("API response status:", response.status);
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+            console.log("API result:", result);
+
+            loading.style.display = 'none';
+
+            if (result.vehicle_detected) {
+                resultSection.className = 'result-section result-positive';
+                resultIcon.textContent = '✅';
+                resultText.textContent = 'Vehicle Detected!';
+                resultDetails.textContent = "";
+            } else {
+                resultSection.className = 'result-section result-negative';
+                resultIcon.textContent = '❌';
+                resultText.textContent = 'No Vehicle Found';
+                resultDetails.textContent = `Confident: ${result.confidence || 'N/A'} | Size: ${result.image_size?.join('x') || 'N/A'}`;
+            }
+
+            resultSection.style.display = 'block';
+
+        } catch (error) {
+            loading.style.display = 'none';
+            console.error('Error occurred while detecting vehicle:', error);
+            errorMessage.textContent = error.message || 'Failed to analyze image. Please try again.';
+            errorSection.style.display = 'block';
+        }
+    }
+
+    // Drag and drop handlers
+    const uploadSection = document.querySelector('.upload-section');
+
+    uploadSection.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadSection.style.borderColor = '#764ba2';
+        uploadSection.style.background = '#f8f9ff';
+    });
+
+    uploadSection.addEventListener('dragleave', () => {
+        uploadSection.style.borderColor = '#667eea';
+        uploadSection.style.background = 'white';
+    });
+
+    uploadSection.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadSection.style.borderColor = '#667eea';
+        uploadSection.style.background = 'white';
+
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            const file = files[0];
+            if (file.type.startsWith('image/')) {
+                document.getElementById('fileInput').files = files;
+                handleFileSelect({target: {files: files}});
+            }
+        }
+    });
+</script>
+
+</body>
+</html>
